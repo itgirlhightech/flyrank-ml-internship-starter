@@ -1,35 +1,30 @@
 # Capstone Report — <your lane>
 
-- **Author:**
-- **Lane:**
-- **Repo:**
-- **Date:**
+- **Author:** Antonia Evilyn de Morais Feitosa
+- **Lane:** Lane 2 - Refresh/Opportunity Scoring 
+- **Repo:** https://github.com/itgirlhightech/flyrank-ml-internship-starter
+- **Date:** 2026/07/09
 
 > Copy this file to `work/capstone_report.md` and fill it in as you build. The eight
 > sections mirror the Pass / Needs-Work rubric axes, so nothing here is optional.
 
 ## 1. Problem framing
 
-What decision does this support? Name the unit of analysis (page, client, day…), the output
-(score, rank, cluster, report), the action a human takes from it, and the cost of a wrong
-call. Why does data/ML help here at all?
+There are thousands of pages and various metrics (CTR, position, content age, impressions, trend...). Analysing everything manualli is difficult. Data and Machine Learning can identify patterns and help prioritize which pages should be reviewed first.
+
 
 ## 2. Data safety
 
-Which data you used and which columns you deliberately excluded (and why). Leakage risks you
-considered — especially label-derived fields (`trend_direction`, `trend_pct`) and pseudonymous
-IDs (grouping only, never features). Confirm nothing client-identifying appears anywhere in
-`work/`.
+I used position_tier, ctr, content_age_days, and trend_direction for the exploratory analysis because they describe page performance and content characteristics relevant to the research question. I excluded content_id and client_id as features because they are pseudonymous identifiers and do not provide predictive information. I also considered the risk of data leakage: fields such as trend_direction and trend_pct may reveal information related to the target in a future predictive model, so they were only used for exploratory analysis and not as candidate features. Finally, I confirmed that no client-identifying information is included in the work/ directory.
+
 
 ## 3. Baseline
 
-The transparent rule or score you built first. Why it's a fair comparison, and its numbers on
-the same data and metric as your model.
+The baseline has not been built yet. As a first step, I performed exploratory analyses to understand the dataset and identify useful patterns. These observations will guide the design of a simple and transparent scoring rule that can later be compared with a machine learning model using the same evaluation metric.
 
 ## 4. Model / analysis
 
-Your method and why it fits the lane. The exact feature list (and what you left out on
-purpose). The target or proxy definition, in one sentence.
+I will start with exploratory analysis to understand the relationships between the variables. Then I plan to build a simples scoring rule to prioritize pages before comparing it with a machine learning model.
 
 ## 5. Evaluation
 
@@ -43,8 +38,9 @@ words. Surprises and negative results — a well-understood "no effect" is a val
 
 ## 7. Recommendation
 
-The ranked actions or decisions your output supports, and how a FlyRank editor would use them
-tomorrow. State your confidence and the limits explicitly.
+The initial results are based on exploratory data analysis and provide useful insights that will support the next stages of the project. The selected Lane aims to produce a practical ranking that helps prioritize which pages should be reviewed first. A FlyRank editor could use this ranking to focus on pages that are more likely to benefit from content updates instead of reviewing every page manually.
+
+At this stage, my confidence is moderate because the conclusions are based on observed patterns rather than a trained machine learning model. The current analyses identify relationships in the data but do not establish causation. The ranking, features, and methodology may be refined as new analyses and models are developed throughout the following weeks.
 
 ## 8. Reproducibility
 
