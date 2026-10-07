@@ -1,0 +1,179 @@
+Content Refresh Opportunity Scoring: A Signal-Based Approach to Prioritizing Human Review
+
+Abstract
+
+This study asks which safe search-content signals are associated with observed content decline and how they can support a ranked refresh-review queue. Using the FlyRank internship warehouse, I aggregated content-level performance and query signals and defined an observed decline label from changes in 30-day impressions. A Decision Tree was evaluated against a majority-class baseline using a client-level grouped holdout to reduce cross-client leakage. The Decision Tree identified visible_queries and rare_share as its most influential features, but it did not outperform the baseline, achieving 0.701 F1 compared with 0.808 for the baseline. The resulting signal-based queue prioritizes content for human review rather than predicting future search performance or prescribing automatic refreshes.
+
+1. Introduction
+
+Search-content performance can change over time, creating a need to identify content items that may warrant closer review. However, a large content inventory makes manual prioritization difficult, particularly when the available data contains multiple search and performance signals that may indicate different types of opportunity.
+
+This study focuses on the decision of which content items should receive priority for human review when considering potential refresh opportunities. The analysis examines whether observable search-content signals are associated with an observed decline in impressions and whether these signals can be translated into a transparent, ranked review queue.
+
+Rather than attempting to predict Google's ranking behavior or establish that a content refresh will cause future performance improvements, this work is framed as a decision-support analysis. The resulting recommendations are intended to help a reviewer identify content items that merit further investigation based on observed historical signals.
+
+Problem statement
+
+Which safe search-content signals are associated with observed content decline, and how can they support a ranked refresh-review queue for human evaluation?
+
+2. Data
+
+This analysis uses the FlyRank ML Internship warehouse, accessed through the internship dataset and queried with DuckDB. The analysis combines content-level daily performance data with aggregated 90-day query-level signals.
+
+The main performance data was used to calculate 30-day impression totals for a recent period and the preceding 30-day period. Content items were retained when they had at least 100 impressions in the preceding 30-day period, providing a minimum level of historical activity for the decline analysis.
+
+The analysis used the following content-level signals:
+
+- imp_prev30: impressions during the preceding 30-day period;
+- visible_queries: number of visible queries associated with the content;
+- rare_share: share of impressions from rare queries;
+- anon_share: share of anonymized impressions;
+- top_query_share: share of retained 90-day impressions attributable to the highest-impression query.
+
+The observed decline label was defined as a reduction of at least 20% in impressions between the preceding and most recent 30-day periods:
+
+is_declining = 1 when imp_last30 < 0.8 × imp_prev30; otherwise 0.
+
+After joining the performance and query-signal data and removing rows with missing modeling features, the final modeling dataset contained 102,203 content items.
+
+3. Methodology
+
+3.1 Data preparation
+
+The analysis was performed using DuckDB to query the FlyRank ML Internship warehouse. The daily performance data was aggregated over the most recent 60-day window available in the dataset, ending at the maximum observed report_date.
+
+For each content item, impressions were separated into two consecutive 30-day periods:
+
+- imp_last30: impressions in the most recent 30-day period;
+- imp_prev30: impressions in the preceding 30-day period.
+
+Content items were retained for the analysis when imp_prev30 was at least 100, providing a minimum level of historical impression activity for the decline analysis.
+
+Query-level signals were aggregated at the content level and joined with the performance data. The resulting features were used only when complete observations were available.
+
+3.2 Observed decline label
+
+The target variable represents an observed historical decline, rather than a prediction of future performance. A content item was labeled as declining when its impressions in the most recent 30-day period were less than 80% of its impressions in the preceding 30-day period.
+
+This corresponds to an observed decline of at least 20% between the two periods.
+
+3.3 Features
+
+The modeling dataset used five features:
+
+- imp_prev30: impressions in the preceding 30-day period;
+- visible_queries: number of visible queries associated with the content;
+- rare_share: share of impressions from rare queries;
+- anon_share: share of anonymized impressions;
+- top_query_share: share of retained 90-day impressions attributable to the highest-impression query.
+
+These features represent observable performance and search-content signals available in the internship warehouse.
+
+3.4 Baseline and model
+
+A majority-class baseline was used as the reference model. It assigns every test observation to the most frequent class observed in the training data.
+
+The main exploratory model was a Decision Tree classifier with a maximum depth of 5 and a fixed random seed of 42. The tree was used to examine whether the available signals could distinguish between content items with and without the observed decline label.
+
+3.5 Validation strategy
+
+To reduce the risk of cross-client leakage, validation was performed using a client-level grouped holdout. GroupShuffleSplit was used to create an 80/20 train-test split, with client_hash_id defining the groups.
+
+As a result, clients in the test set were not present in the training set. This provides a more conservative evaluation of whether the observed relationships generalize beyond the clients used to fit the model.
+
+Model performance was evaluated using accuracy, precision, recall, and F1 score, with particular attention to F1 because the decline and non-decline classes were not equally represented.
+
+3.6 Leakage and interpretation checks
+
+The analysis was designed to avoid using information that would expose private client identity or private search content. The public-facing analysis uses hashed identifiers and aggregated signals rather than client names, domains, URLs, or private queries.
+
+The model and its feature importance values are interpreted as directional evidence of association within the observed dataset. They are not treated as causal effects, calibrated probabilities, or evidence about Google's ranking algorithm.
+
+4. Results
+
+The grouped evaluation showed that the majority-class baseline outperformed the Decision Tree on the held-out client groups. The baseline achieved 0.679 accuracy and 0.808 F1, while the Decision Tree achieved 0.599 accuracy and 0.701 F1. The Decision Tree achieved higher precision (0.710 versus 0.679), but its recall was lower (0.692 versus 1.000).
+
+Model | Accuracy | Precision | Recall | F1
+Baseline | 0.679 | 0.679 | 1.000 | 0.808
+Decision Tree | 0.599 | 0.710 | 0.692 | 0.701
+
+Within the fitted Decision Tree, visible_queries and rare_share had the highest feature importance, followed by anon_share and imp_prev30. top_query_share contributed relatively little to the tree's splits.
+
+Feature importance values:
+
+- visible_queries: 0.335059
+- rare_share: 0.323156
+- anon_share: 0.173374
+- imp_prev30: 0.155154
+- top_query_share: 0.013258
+
+These values describe how the fitted tree used the available features and should not be interpreted as causal effects or independent measures of predictive power.
+
+The confusion matrix for the Decision Tree on the grouped test set was:
+
+[[6663, 9875],
+ [10741, 24166]]
+
+This indicates that the model produced both false positives and false negatives, reinforcing the decision-support framing rather than a claim of reliable automated prediction.
+
+5. Ranked Recommendations
+
+Because the Decision Tree did not outperform the majority-class baseline, the final review queue does not depend on the model's output probability. Instead, it uses transparent signal rules derived from the observed feature distributions.
+
+The ranking uses four signal types:
+
+- OBSERVED_DECLINE: the content met the historical decline definition;
+- LOW_QUERY_VISIBILITY: visible_queries was at or below the 25th percentile of the modeling data (4 queries);
+- HIGH_QUERY_CONCENTRATION: top_query_share was at or above the 90th percentile (approximately 0.821);
+- HIGH_RARE_QUERY_SHARE: rare_share was at or above the 90th percentile (approximately 0.284).
+
+Recommended actions are assigned using the following hierarchy:
+
+- REVIEW: observed decline and/or high query concentration.
+- QUICK_WIN: low query visibility without a higher-priority review signal.
+- MONITOR: high rare-query share without a higher-priority signal.
+- NO_ACTION: no strong signal identified by the defined rules.
+
+The resulting ranked queue contained 102,203 content items:
+
+- REVIEW: 67,639
+- QUICK_WIN: 6,162
+- MONITOR: 2,644
+- NO_ACTION: 25,758
+
+Items are ranked first by recommended action priority, then by the number and strength of supporting signals, with preceding-period impressions used as a tie-breaker.
+
+The ranked queue is designed to support human review and prioritization, not to prescribe automatic content updates. These recommendations are intended as decision-support signals. They do not establish causality, predict future search performance, or imply that a content item should necessarily be updated.
+
+6. Limitations and Honest Framing
+
+The Decision Tree did not outperform the majority-class baseline under client-level grouped validation. The model also produced both false positives and false negatives, limiting its use as a reliable predictive classifier.
+
+The observed decline label is defined from historical impression changes and should not be interpreted as a causal measure of content quality or future search performance. Feature importance indicates how the fitted tree used the available signals, not causal influence.
+
+The ranked queue is therefore intended for human review and prioritization rather than automatic content updates. The recommendations do not establish causality, predict Google's ranking behavior, or demonstrate that refreshing a content item will improve future performance.
+
+The analysis should also be understood within the limits of the available warehouse signals. The absence of a strong signal does not establish that a content item is healthy, and the presence of a review signal does not establish that a refresh is appropriate. Human investigation remains necessary before any content decision.
+
+7. Reproducibility
+
+The analysis is reproducible from the project repository:
+
+GitHub repository:
+https://github.com/itgirlhightech/flyrank-ml-internship-starter.git
+
+The capstone notebook is located under work/notebooks/ and contains the data preparation, feature construction, model evaluation, signal-based ranking logic, and export steps required to reproduce the analysis.
+
+The notebook also generates and displays the analysis figures used to interpret the results. The figures are not maintained as a separate public figures directory.
+
+The project uses the FlyRank ML Internship warehouse as its data source. Access to the underlying warehouse is handled through the required Hugging Face authentication flow, while the repository contains the analysis code and reproducible workflow rather than raw data exports.
+
+Program:
+https://internship.flyrank.ai/intern
+
+8. Acknowledgments and Data Credit
+
+Built on the FlyRank ML Internship dataset.
+
+FlyRank AI Internship:
+https://internship.flyrank.ai/intern
